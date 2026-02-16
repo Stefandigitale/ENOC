@@ -22,7 +22,7 @@ const config = {
   },
   
   // Colore particelle vuote
-  emptyColor: { r: 0, g: 255, b: 0 }       // Verde
+  emptyColor: { r: 255, g: 140, b: 0 }      // Arancione Pip-Boy
 };
 
 // ============================================
@@ -284,16 +284,16 @@ function animate() {
     const padding = 8;
     
     // Background tooltip
-    ctx.fillStyle = 'rgba(0, 30, 0, 0.95)';
+    ctx.fillStyle = 'rgba(30, 15, 0, 0.95)';
     ctx.fillRect(tooltipX - padding, tooltipY - 18, textWidth + padding * 2, 24);
     
     // Border tooltip
-    ctx.strokeStyle = '#0f0';
+    ctx.strokeStyle = '#ff8c00';
     ctx.lineWidth = 1;
     ctx.strokeRect(tooltipX - padding, tooltipY - 18, textWidth + padding * 2, 24);
     
     // Testo tooltip
-    ctx.fillStyle = '#0f0';
+    ctx.fillStyle = '#ff8c00';
     ctx.fillText(text, tooltipX, tooltipY);
   }
   
@@ -518,15 +518,21 @@ function closeMessage() {
 // SALVATAGGIO MESSAGGIO
 // ============================================
 async function saveMessage() {
+  // Controllo limite giornaliero
+  if (!DailyLimits.canSendMessage()) {
+    alert('daily limit reached: you can send up to 10 messages per day.\ntry again tomorrow.');
+    return;
+  }
+
   const title = document.getElementById('message-title').value.trim();
   const text = document.getElementById('new-message').value.trim();
   const category = document.getElementById('message-category').value;
-  
+
   if (!title) {
     alert('please enter a title for your message.');
     return;
   }
-  
+
   if (!text) {
     alert('please enter a message.');
     return;
@@ -546,7 +552,9 @@ async function saveMessage() {
   };
   
   await BackendAPI.saveMessage(message);
-  
+  DailyLimits.recordMessage();
+  updateDailyStats();
+
   // Effetto esplosione di particelle al centro schermo
   const centerX = canvas.width / 2;
   const centerY = canvas.height / 2;
@@ -651,9 +659,18 @@ async function handlePhotoUpload(event) {
     event.target.value = '';
     return;
   }
-  
+
+  // Controllo limite giornaliero cumulativo (50MB/giorno)
+  if (!DailyLimits.canUploadPhoto(file.size)) {
+    const limits = DailyLimits.getRemainingLimits();
+    alert(`daily photo limit reached.\nremaining today: ${limits.photoMBLeft}MB of 50MB.\ntry again tomorrow.`);
+    event.target.value = '';
+    return;
+  }
+
   try {
     state.tempPhoto = await fileToBase64(file);
+    DailyLimits.recordPhotoUpload(file.size);
     
     // Mostra preview
     document.getElementById('upload-preview').classList.remove('hidden');
@@ -720,11 +737,21 @@ function resetMediaUploads() {
 }
 
 // ============================================
+// AGGIORNAMENTO STATS GIORNALIERE
+// ============================================
+function updateDailyStats() {
+  const limits = DailyLimits.getRemainingLimits();
+  const el = document.getElementById('daily-msg-count');
+  if (el) el.textContent = DailyLimits.MAX_MESSAGES_PER_DAY - limits.messagesLeft;
+}
+
+// ============================================
 // INIZIALIZZAZIONE
 // ============================================
 async function init() {
   // Carica messaggi salvati
   await createParticles();
+  updateDailyStats();
   
   // Avvia animazione
   animate();
