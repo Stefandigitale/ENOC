@@ -405,6 +405,105 @@ canvas.addEventListener('click', (e) => {
 });
 
 // ============================================
+// EVENTI TOUCH - DRAG & PINCH TO ZOOM
+// ============================================
+let touchStartDistance = 0;
+let touchDragged = false;
+
+canvas.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    state.isDragging = true;
+    state.dragStartX = e.touches[0].clientX;
+    state.dragStartY = e.touches[0].clientY;
+    state.autoRotate = false;
+    touchDragged = false;
+  } else if (e.touches.length === 2) {
+    // Pinch-to-zoom: salva distanza iniziale tra le dita
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    touchStartDistance = Math.sqrt(dx * dx + dy * dy);
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  if (e.touches.length === 1 && state.isDragging) {
+    const deltaX = e.touches[0].clientX - state.dragStartX;
+    const deltaY = e.touches[0].clientY - state.dragStartY;
+
+    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+      touchDragged = true;
+    }
+
+    state.targetRotationY += deltaX * 0.005;
+    state.targetRotationX += deltaY * 0.005;
+
+    state.dragStartX = e.touches[0].clientX;
+    state.dragStartY = e.touches[0].clientY;
+
+    // Aggiorna coordinate
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+    const dx = (e.touches[0].clientX - centerX) / centerX;
+    const dy = (e.touches[0].clientY - centerY) / centerY;
+    document.getElementById('coords').textContent =
+      `coords: ${dx.toFixed(3)}, ${dy.toFixed(3)}, 0.000`;
+  } else if (e.touches.length === 2 && touchStartDistance > 0) {
+    // Pinch-to-zoom
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const currentDistance = Math.sqrt(dx * dx + dy * dy);
+
+    const scale = currentDistance / touchStartDistance;
+    state.targetZoom = Math.max(config.zoomMin, Math.min(config.zoomMax, state.targetZoom * scale));
+    touchStartDistance = currentDistance;
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+  if (e.touches.length === 0) {
+    state.isDragging = false;
+
+    // Tap (non drag) = click
+    if (!touchDragged && e.changedTouches.length === 1) {
+      const touch = e.changedTouches[0];
+      state.mouseX = touch.clientX;
+      state.mouseY = touch.clientY;
+
+      // Trova particella sotto il tap
+      let tappedParticle = null;
+      let minDist = 30;
+      state.particles.forEach(p => {
+        if (p.hasMessage) {
+          const dx = touch.clientX - p.screenX;
+          const dy = touch.clientY - p.screenY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minDist) {
+            minDist = dist;
+            tappedParticle = p;
+          }
+        }
+      });
+
+      if (tappedParticle && tappedParticle.message) {
+        showMessagePanel(tappedParticle.message);
+      } else {
+        state.selectedPoint = {
+          x: touch.clientX,
+          y: touch.clientY,
+          coords: `${((touch.clientX - canvas.width/2)/canvas.width).toFixed(3)}, ${((touch.clientY - canvas.height/2)/canvas.height).toFixed(3)}, 0.000`
+        };
+        showMessagePanel(null);
+      }
+    }
+
+    touchStartDistance = 0;
+    setTimeout(() => { state.autoRotate = true; }, 2000);
+  }
+});
+
+// ============================================
 // GESTIONE SEARCH BOX
 // ============================================
 document.getElementById('search').addEventListener('keypress', async (e) => {
