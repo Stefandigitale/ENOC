@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>time capsule</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="greeting">hello human.</div>
+  
+  <canvas id="sphere"></canvas>
+  
+  <div id="interface">
+    <div id="coords">coords: 0.000, 0.000, 0.000</div>
+    <input type="text" id="search" placeholder="search by title...">
+  </div>
+  
+  <div id="stats">
+    <div>messages: <span id="count">0</span></div>
+    <div>particles: <span id="particles">0</span></div>
+  </div>
+  
+  <div id="legend">
+    <div class="legend-title">categories</div>
+    <div class="legend-item" data-category="memory">
+      <span class="legend-dot" style="background: #fff;"></span>
+      <span>memories</span>
+    </div>
+    <div class="legend-item" data-category="memorial">
+      <span class="legend-dot" style="background: #4AF;"></span>
+      <span>memorials</span>
+    </div>
+    <div class="legend-item" data-category="love">
+      <span class="legend-dot" style="background: #F44;"></span>
+      <span>love stories</span>
+    </div>
+    <div class="legend-item" data-category="family">
+      <span class="legend-dot" style="background: #FF0;"></span>
+      <span>family moments</span>
+    </div>
+    <div class="legend-item" data-category="joy">
+      <span class="legend-dot" style="background: #F80;"></span>
+      <span>happy moments</span>
+    </div>
+    <div class="legend-toggle">
+      <button id="filter-toggle" onclick="toggleFilter()">show all</button>
+    </div>
+  </div>
+  
+  <div id="message-panel">
+    <button class="close-btn" onclick="closeMessage()">×</button>
+    <h2>time capsule</h2>
+    
+    <!-- Visualizzazione messaggio esistente -->
+    <div id="message-view" class="hidden">
+      <h3 id="view-title"></h3>
+      <div id="view-coords"></div>
+      <div id="message-content"></div>
+      
+      <!-- Media display -->
+      <div id="media-container" class="hidden">
+        <img id="message-image" class="hidden" alt="message image">
+        <audio id="message-audio" class="hidden" controls></audio>
+      </div>
+      
+      <div id="message-date"></div>
+      <button onclick="downloadCoordinates()">download coordinates</button>
+      <button onclick="closeMessage()">close</button>
+    </div>
+    
+    <!-- Form nuovo messaggio -->
+    <div id="message-form">
+      <div id="form-intro">
+        <p style="color:#666;">no message here yet.</p>
+        <p style="margin-top:10px;">leave something for the future?</p>
+      </div>
+      
+      <input type="text" id="message-title" placeholder="message title..." maxlength="100">
+      
+      <div class="category-selector">
+        <label>category:</label>
+        <select id="message-category">
+          <option value="memory">⚪ memories</option>
+          <option value="memorial">🔵 memorials</option>
+          <option value="love">🔴 love stories</option>
+          <option value="family">🟡 family moments</option>
+          <option value="joy">🟠 happy moments</option>
+        </select>
+      </div>
+      
+      <textarea id="new-message" placeholder="your message for the future..."></textarea>
+      
+      <!-- Media upload -->
+      <div class="media-upload">
+        <label class="upload-btn">
+          <input type="file" id="photo-upload" accept="image/*" onchange="handlePhotoUpload(event)">
+          <span>📷 add photo</span>
+        </label>
+        
+        <label class="upload-btn">
+          <input type="file" id="audio-upload" accept="audio/*" onchange="handleAudioUpload(event)">
+          <span>🎵 add audio</span>
+        </label>
+      </div>
+      
+      <!-- Preview media caricati -->
+      <div id="upload-preview" class="hidden">
+        <div id="photo-preview" class="hidden">
+          <img id="preview-image" alt="preview">
+          <button onclick="removePhoto()">remove photo</button>
+        </div>
+        <div id="audio-preview" class="hidden">
+          <audio id="preview-audio" controls></audio>
+          <button onclick="removeAudio()">remove audio</button>
+        </div>
+      </div>
+      
+      <div class="form-buttons">
+        <button onclick="saveMessage()">save message</button>
+        <button onclick="closeMessage()">cancel</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Istruzioni iniziali -->
+  <div id="instructions" class="hidden">
+    <p>click + drag to rotate</p>
+    <p>click on a point to add a message</p>
+  </div>
+
+  <script src="storage.js"></script>
+  <script src="backend-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
