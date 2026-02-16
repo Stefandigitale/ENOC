@@ -1,4 +1,18 @@
 // ============================================
+// POLYFILL: AbortSignal.timeout
+// Non disponibile in Safari <16.4, Firefox <90, Chrome <103
+// ============================================
+if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+  AbortSignal.timeout = function(ms) {
+    const controller = new AbortController();
+    setTimeout(function() {
+      controller.abort(new DOMException('TimeoutError', 'TimeoutError'));
+    }, ms);
+    return controller.signal;
+  };
+}
+
+// ============================================
 // BACKEND CONFIGURATION
 //
 // Per Netlify (deploy statico): USE_REMOTE = false
@@ -51,7 +65,10 @@ const BackendAPI = {
       console.error('Backend error:', error);
       
       if (BACKEND_CONFIG.AUTO_FALLBACK) {
-        console.log('Falling back to localStorage');
+        console.warn('[ENOC] Backend unreachable — falling back to localStorage');
+        if (typeof window.showToast === 'function') {
+          window.showToast('offline mode — saving locally', 'info');
+        }
         return StorageManager.saveMessage(message);
       }
       

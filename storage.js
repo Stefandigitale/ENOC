@@ -3,25 +3,73 @@
 // Gestisce il salvataggio e caricamento dei messaggi
 // ============================================
 
+// ============================================
+// HELPER: localStorage sicuro con gestione quota
+// ============================================
+function safeLocalStorageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    if (e instanceof DOMException && (
+      e.code === 22 ||            // QuotaExceededError standard
+      e.code === 1014 ||          // Firefox NS_ERROR_DOM_QUOTA_REACHED
+      e.name === 'QuotaExceededError' ||
+      e.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    )) {
+      if (typeof window.showToast === 'function') {
+        window.showToast('storage full — delete some messages to continue', 'error');
+      } else {
+        console.error('[ENOC] localStorage quota exceeded');
+      }
+    } else {
+      console.error('[ENOC] localStorage write error:', e);
+    }
+    return false;
+  }
+}
+
 const StorageManager = {
   STORAGE_KEY: 'timeCapsuleMessages',
-  
+
   /**
-   * Salva un nuovo messaggio
+   * Salva un nuovo messaggio.
+   * Se le stesse coordinate esistono già con version > message.version
+   * lancia 'conflict' per evitare di sovrascrivere un edit concorrente.
    */
   saveMessage(message) {
     const messages = this.getAllMessages();
-    messages.push(message);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(messages));
+
+    // Conflict detection: stesse coordinate già presenti?
+    const existingIdx = messages.findIndex(m => m.coords === message.coords);
+    if (existingIdx !== -1) {
+      const existing = messages[existingIdx];
+      // Se il messaggio già salvato è più recente del nostro, è un conflitto
+      if (existing.version && message.version && existing.version > message.version) {
+        throw new Error('conflict');
+      }
+      // Aggiornamento: sostituisce il vecchio
+      messages[existingIdx] = message;
+    } else {
+      messages.push(message);
+    }
+
+    const ok = safeLocalStorageSet(this.STORAGE_KEY, JSON.stringify(messages));
+    if (!ok) throw new Error('storage-full');
     return messages.length;
   },
-  
+
   /**
    * Ottiene tutti i messaggi
    */
   getAllMessages() {
-    const data = localStorage.getItem(this.STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
+    try {
+      const data = localStorage.getItem(this.STORAGE_KEY);
+      return data ? JSON.parse(data) : [];
+    } catch (e) {
+      console.error('[ENOC] localStorage parse error:', e);
+      return [];
+    }
   },
   
   /**
@@ -87,7 +135,7 @@ const DailyLimits = {
       messageCount: 0,
       photoBytes: 0
     };
-    localStorage.setItem(this.LIMITS_KEY, JSON.stringify(usage));
+    safeLocalStorageSet(this.LIMITS_KEY, JSON.stringify(usage));
     return usage;
   },
 
@@ -104,13 +152,13 @@ const DailyLimits = {
   recordMessage() {
     const usage = this._getUsage();
     usage.messageCount++;
-    localStorage.setItem(this.LIMITS_KEY, JSON.stringify(usage));
+    safeLocalStorageSet(this.LIMITS_KEY, JSON.stringify(usage));
   },
 
   recordPhotoUpload(fileSize) {
     const usage = this._getUsage();
     usage.photoBytes += fileSize;
-    localStorage.setItem(this.LIMITS_KEY, JSON.stringify(usage));
+    safeLocalStorageSet(this.LIMITS_KEY, JSON.stringify(usage));
   },
 
   getRemainingLimits() {

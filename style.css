@@ -532,6 +532,52 @@ button:active {
    PIP-BOY EFFECTS
    ============================================ */
 
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+#toast-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast {
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid #ff8c00;
+  color: #ff8c00;
+  font-family: 'Courier New', monospace;
+  font-size: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: 2px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s, transform 0.3s;
+  max-width: 320px;
+  text-align: center;
+}
+
+.toast.toast-error {
+  border-color: #ff4444;
+  color: #ff4444;
+}
+
+.toast.toast-info {
+  border-color: #44aaff;
+  color: #44aaff;
+}
+
+.toast.toast-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* Vignette CRT */
 body::before {
   content: '';

@@ -1,4 +1,26 @@
 // ============================================
+// TOAST NOTIFICATIONS
+// ============================================
+window.showToast = function(message, type = 'default') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (type === 'error' ? ' toast-error' : type === 'info' ? ' toast-info' : '');
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  // Forza reflow per attivare la transizione CSS
+  toast.offsetHeight; // eslint-disable-line no-unused-expressions
+  toast.classList.add('toast-visible');
+
+  setTimeout(() => {
+    toast.classList.remove('toast-visible');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+  }, 4000);
+};
+
+// ============================================
 // CONFIGURAZIONE
 // ============================================
 const config = {
@@ -640,17 +662,32 @@ async function saveMessage() {
   // Genera coordinate univoche random
   const coords = `${(Math.random() * 2 - 1).toFixed(3)}, ${(Math.random() * 2 - 1).toFixed(3)}, ${(Math.random() * 2 - 1).toFixed(3)}`;
   
+  const nowUTC = new Date().toISOString(); // sempre UTC
   const message = {
     title,
     coords,
     text,
     category,
-    date: new Date().toISOString().split('T')[0],
+    date: nowUTC.split('T')[0],     // YYYY-MM-DD UTC per display
+    createdAt: nowUTC,               // timestamp completo UTC
+    version: Date.now(),             // usato per conflict detection
     photo: state.tempPhoto,
     audio: state.tempAudio
   };
   
-  await BackendAPI.saveMessage(message);
+  try {
+    await BackendAPI.saveMessage(message);
+  } catch (err) {
+    if (err.message === 'conflict') {
+      alert('conflict: this message was already updated by someone else.\nplease reload and try again.');
+      return;
+    }
+    if (err.message === 'storage-full') {
+      // showToast è già stato chiamato da safeLocalStorageSet
+      return;
+    }
+    throw err;
+  }
   DailyLimits.recordMessage();
   updateDailyStats();
 
@@ -676,7 +713,17 @@ function downloadCoordinates() {
   if (!message) return;
   
   const content = generateCoordinateFile(message);
-  const filename = `${message.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_coordinates.txt`;
+  // Rimuove emoji (surrogate pairs U+1F000+), caratteri di controllo, e tutto
+  // ciò che non è alfanumerico ASCII — safe per tutti i filesystem
+  const safeTitle = message.title
+    .replace(/[\u{1F000}-\u{10FFFF}]/gu, '')  // emoji e simboli Unicode alti
+    .replace(/[\x00-\x1F\x7F]/g, '')           // caratteri di controllo
+    .replace(/[^a-z0-9\s-]/gi, '_')             // non-alfanumerici
+    .trim()
+    .replace(/\s+/g, '_')
+    .toLowerCase()
+    .slice(0, 80) || 'message';                 // max 80 char, fallback se vuoto
+  const filename = `${safeTitle}_coordinates.txt`;
   
   downloadFile(content, filename);
 }
@@ -768,16 +815,31 @@ async function handlePhotoUpload(event) {
   }
 
   try {
-    state.tempPhoto = await fileToBase64(file);
+    const dataUrl = await fileToBase64(file);
+
+    // Verifica che l'immagine sia decodificabile (non corrotta)
+    await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = resolve;
+      img.onerror = () => reject(new Error('corrupted image'));
+      img.src = dataUrl;
+    });
+
+    state.tempPhoto = dataUrl;
     DailyLimits.recordPhotoUpload(file.size);
-    
+
     // Mostra preview
     document.getElementById('upload-preview').classList.remove('hidden');
     document.getElementById('photo-preview').classList.remove('hidden');
     document.getElementById('preview-image').src = state.tempPhoto;
   } catch (error) {
-    alert('error loading photo. please try again.');
-    console.error(error);
+    if (error.message === 'corrupted image') {
+      alert('the image file appears to be corrupted or in an unsupported format.');
+    } else {
+      alert('error loading photo. please try again.');
+    }
+    event.target.value = '';
+    console.error('[ENOC] photo upload error:', error);
   }
 }
 
