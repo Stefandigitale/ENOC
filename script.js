@@ -737,6 +737,29 @@ function resetMediaUploads() {
 }
 
 // ============================================
+// BOOT-UP TYPEWRITER
+// ============================================
+function typewriterGreeting(text) {
+  const el = document.getElementById('greeting');
+  const cursor = document.createElement('span');
+  cursor.className = 'cursor';
+  cursor.textContent = '_';
+  el.textContent = '';
+  el.appendChild(cursor);
+
+  let i = 0;
+  const interval = setInterval(() => {
+    el.textContent = text.substring(0, i + 1);
+    el.appendChild(cursor);
+    i++;
+    if (i >= text.length) {
+      clearInterval(interval);
+      setTimeout(() => cursor.remove(), 1000);
+    }
+  }, 80);
+}
+
+// ============================================
 // AGGIORNAMENTO STATS GIORNALIERE
 // ============================================
 function updateDailyStats() {
@@ -749,6 +772,9 @@ function updateDailyStats() {
 // INIZIALIZZAZIONE
 // ============================================
 async function init() {
+  // Boot-up typewriter
+  typewriterGreeting('hello human.');
+
   // Carica messaggi salvati
   await createParticles();
   updateDailyStats();
