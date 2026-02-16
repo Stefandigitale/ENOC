@@ -54,6 +54,75 @@ const StorageManager = {
   }
 };
 
+// ============================================
+// DAILY LIMITS MANAGER
+// Traccia i limiti giornalieri via localStorage (anonimo)
+// ============================================
+
+const DailyLimits = {
+  LIMITS_KEY: 'timeCapsuleDailyLimits',
+
+  MAX_MESSAGES_PER_DAY: 10,
+  MAX_PHOTO_BYTES_PER_DAY: 50 * 1024 * 1024, // 50MB
+
+  _today() {
+    return new Date().toISOString().split('T')[0];
+  },
+
+  _getUsage() {
+    const data = localStorage.getItem(this.LIMITS_KEY);
+    if (data) {
+      const parsed = JSON.parse(data);
+      if (parsed.date !== this._today()) {
+        return this._resetUsage();
+      }
+      return parsed;
+    }
+    return this._resetUsage();
+  },
+
+  _resetUsage() {
+    const usage = {
+      date: this._today(),
+      messageCount: 0,
+      photoBytes: 0
+    };
+    localStorage.setItem(this.LIMITS_KEY, JSON.stringify(usage));
+    return usage;
+  },
+
+  canSendMessage() {
+    const usage = this._getUsage();
+    return usage.messageCount < this.MAX_MESSAGES_PER_DAY;
+  },
+
+  canUploadPhoto(fileSize) {
+    const usage = this._getUsage();
+    return (usage.photoBytes + fileSize) <= this.MAX_PHOTO_BYTES_PER_DAY;
+  },
+
+  recordMessage() {
+    const usage = this._getUsage();
+    usage.messageCount++;
+    localStorage.setItem(this.LIMITS_KEY, JSON.stringify(usage));
+  },
+
+  recordPhotoUpload(fileSize) {
+    const usage = this._getUsage();
+    usage.photoBytes += fileSize;
+    localStorage.setItem(this.LIMITS_KEY, JSON.stringify(usage));
+  },
+
+  getRemainingLimits() {
+    const usage = this._getUsage();
+    return {
+      messagesLeft: this.MAX_MESSAGES_PER_DAY - usage.messageCount,
+      photoBytesLeft: this.MAX_PHOTO_BYTES_PER_DAY - usage.photoBytes,
+      photoMBLeft: ((this.MAX_PHOTO_BYTES_PER_DAY - usage.photoBytes) / (1024 * 1024)).toFixed(1)
+    };
+  }
+};
+
 /**
  * Converte un file in base64
  */

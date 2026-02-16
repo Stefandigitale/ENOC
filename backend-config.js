@@ -1,11 +1,15 @@
 // ============================================
 // BACKEND CONFIGURATION
+//
+// Per Netlify (deploy statico): USE_REMOTE = false
+// Per backend self-hosted: USE_REMOTE = true
+//   e aggiorna BACKEND_URL con il tuo server
 // ============================================
 
 const BACKEND_CONFIG = {
-  // Cambia questo a true per usare il backend remoto
-  USE_REMOTE: true,
-  
+  // false = localStorage (Netlify), true = backend remoto
+  USE_REMOTE: false,
+
   // URL del backend (modifica con il tuo URL quando deploi)
   BACKEND_URL: 'http://localhost:3000/api',
   
